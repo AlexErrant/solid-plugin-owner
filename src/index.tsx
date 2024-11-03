@@ -1,15 +1,64 @@
 /* @refresh reload */
-import { render } from 'solid-js/web';
+import {
+  type Component,
+  type VoidComponent,
+  createSignal,
+  createResource,
+} from "solid-js";
+import { render, Dynamic } from "solid-js/web";
 
-import './index.css';
-import App from './App';
+type PluginType = {
+  Plugin: VoidComponent<{
+    count: number;
+    child: VoidComponent<{ count: number }>;
+  }>;
+};
 
-const root = document.getElementById('root');
+const pluginCode = `
+import { getOwner, render, insert, template } from "solid-js/web";
 
-if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
-  throw new Error(
-    'Root element not found. Did you forget to add it to your index.html? Or maybe the id attribute got misspelled?',
-  );
+export const Plugin = (props) => {
+  console.log("Plugin owner", getOwner())
+  const renderMount = document.createElement("div");
+  render(() => {
+    const d = template("<div>")();
+    insert(d, "plugin count is ", null);
+    insert(d, () => props.count, null);
+    insert(d, props.child({
+      get count() {
+        return props.count;
+      },
+    }), null);
+    return d;
+  }, renderMount);
+  return renderMount;
+};
+`;
+
+// https://stackoverflow.com/a/57255653
+async function loadPlugin() {
+  const blob = new Blob([pluginCode], { type: "text/javascript" });
+  const url = URL.createObjectURL(blob);
+  const module = await import(/* @vite-ignore */ url);
+  URL.revokeObjectURL(url); // GC objectURLs
+  return (module as PluginType).Plugin;
 }
 
-render(() => <App />, root!);
+const ChildComp: VoidComponent<{ count: number }> = (props) => {
+  return <div>Child Comp, *2 prop is {props.count * 2}</div>;
+};
+
+const App: Component = () => {
+  const [count, setCount] = createSignal(0);
+  const [plugin] = createResource(loadPlugin);
+  return (
+    <div>
+      <button onClick={() => setCount((x) => x + 1)}>
+        Increment {count()}
+      </button>
+      <Dynamic component={plugin()} count={count()} child={ChildComp} />
+    </div>
+  );
+};
+
+render(() => <App />, document.getElementById("app")!);

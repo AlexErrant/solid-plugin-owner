@@ -6,10 +6,18 @@
     <meta name="theme-color" content="#000000" />
     <link rel="shortcut icon" type="image/ico" href="/src/assets/favicon.ico" />
     <title>Solid App</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "solid-js": "/assets/solid.js",
+          "solid-js/web": "/assets/web.js"
+        }
+      }
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
+    <div id="app"></div>
 
     <script src="/src/index.tsx" type="module"></script>
   </body>

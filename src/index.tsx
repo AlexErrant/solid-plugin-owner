@@ -4,6 +4,9 @@ import {
   type VoidComponent,
   createSignal,
   createResource,
+  getOwner,
+  runWithOwner,
+  createEffect,
 } from "solid-js";
 import { render, Dynamic } from "solid-js/web";
 
@@ -45,18 +48,38 @@ async function loadPlugin() {
 }
 
 const ChildComp: VoidComponent<{ count: number }> = (props) => {
+  console.log("ChildComp owner", getOwner());
   return <div>Child Comp, *2 prop is {props.count * 2}</div>;
 };
 
 const App: Component = () => {
+  const owner = getOwner();
+  console.log("App owner", owner);
   const [count, setCount] = createSignal(0);
   const [plugin] = createResource(loadPlugin);
+
+  // I'm calling runWithOwner in createEffect here because calling it in the JSX doesn't render for some reason
+  createEffect(() => {
+    let p = plugin();
+    if (p != null) {
+      let x = runWithOwner(owner, () =>
+        p({ count: count(), child: ChildComp }),
+      );
+      console.info("effect element", x);
+    }
+  });
+
   return (
     <div>
       <button onClick={() => setCount((x) => x + 1)}>
         Increment {count()}
       </button>
       <Dynamic component={plugin()} count={count()} child={ChildComp} />
+      {plugin()?.({ count: count(), child: ChildComp })}
+      <div>No show:</div>
+      {runWithOwner(owner, () =>
+        plugin()?.({ count: count(), child: ChildComp }),
+      )}
     </div>
   );
 };
